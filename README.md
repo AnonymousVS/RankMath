@@ -1,165 +1,173 @@
-# 🔗 Rank Math — Bulk Connect Account
+# RankMath
 
-> Bash script สำหรับ **เชื่อมต่อ Rank Math SEO Plugin** กับ rankmath.com account แบบ Bulk บนเซิร์ฟเวอร์ที่มีหลาย WordPress พร้อมกัน
+Bulk Connect Account สำหรับ **Rank Math SEO** plugin บน WordPress ทุกเว็บใน cPanel/WHM อัตโนมัติ พร้อม Parallel + Telegram notification
 
 ---
 
-## 📋 สิ่งที่ Script ทำ
+## ✨ การทำงาน
+
+Script อ่าน config (Rank Math credentials) → สแกน WordPress ทุกเว็บผ่าน `/etc/trueuserdomains` → ตรวจสภาพ Rank Math plugin บนแต่ละเว็บ → inject account ใหม่ → verify → แจ้งผล
+
+### 4 สถานะที่เป็นไปได้ต่อเว็บ
+
+| Status | เกิดเมื่อ | ผลลัพธ์ |
+|---|---|---|
+| ✔️ **ALREADY** | account ใหม่ติดตั้งแล้ว | ข้าม (ไม่ทำอะไร) |
+| 🔄 **OVERWRITE** | มี account อื่นอยู่ | เปลี่ยนเป็นใหม่ + แจ้ง Rank Math service ปลด account เก่า |
+| ✅ **PASS** | ไม่มี account | inject ใหม่ |
+| ⏭ **NOPLUGIN** | ไม่มี Rank Math plugin / inactive | ข้าม |
+
+### ขั้นตอนการ inject (ต่อเว็บ)
 
 ```
-1. ค้นหา WordPress ทุกเว็บบนเซิร์ฟเวอร์ (WHM / cPanel)
-2. ตรวจว่า Rank Math Plugin ติดตั้งและ active อยู่หรือไม่
-3. ตรวจสถานะการเชื่อมต่อ rankmath.com account
-4. ถ้ายังไม่เชื่อมต่อ → Activate ผ่าน License Key
-5. บันทึก log แยกตาม status ทุกเว็บ
+1. ตรวจ Plugin       → Rank Math active ไหม?
+2. ตรวจ account      → ปัจจุบัน username เป็นอะไร?
+3. Inject            → เขียน registration_data ใหม่ผ่าน Rank Math API
+4. Flush cache       → wp_cache + LiteSpeed Purge
+5. Verify            → อ่านกลับมา เช็ค api_key ตรงไหม?
+6. Deactivate (BG)   → ถ้า OVERWRITE → curl ไป rankmath.com ปลด account เก่า
 ```
+
 ---
+
+## 🛡 ข้อกำหนด
+
+- AlmaLinux 9 / cPanel/WHM
+- WP-CLI ติดตั้งแล้ว
+- Rank Math SEO plugin ติดตั้ง + active บนเว็บที่ต้องการ
+- `flock`, `curl`, `getent`
+- `/etc/trueuserdomains` พร้อมใช้งาน
+
+---
+
 ## 🚀 วิธีใช้งาน
 
-### ▶️ คำสั่งรัน อย่าลืมเอา Token ที่ Telegram มาใส่ก่อนรันเสมอทุกครั้ง (ห้ามใส่ token ไปใน readme จะโดน revoke)
+📄 **คำสั่งรัน + ขั้นตอนทั้งหมด → [Google Doc](https://docs.google.com/document/d/1lnoznw6WxO-1hFEM6yyGTi688ksqN2UA3P2kwHej6gw/edit?usp=sharing)**
 
-```bash
-CONF=$(mktemp) && \
-curl -s -H "Authorization: token ghp_xxxxxxxเอา Token มาใส่ก่อนรันxxxxxxxxxxx" \
-  https://raw.githubusercontent.com/AnonymousVS/config/main/rankmath-connect.conf > "$CONF" && \
-bash <(curl -s https://raw.githubusercontent.com/AnonymousVS/rankmath/main/connect-account.sh) "$CONF" && \
-rm -f "$CONF"
+> ⚠️ ต้องมี GitHub Personal Access Token ก่อนรัน (อ่าน config repo ที่เป็น private)
+
+---
+
+## 🎛 Mode การทำงาน
+
+| Mode | ใช้เมื่อ |
+|---|---|
+| **1. ทั้งเซิร์ฟเวอร์** | Connect ทุกเว็บใน cPanel ทั้งเซิร์ฟเวอร์ |
+| **2. เลือกบาง cPanel** | เลือกเฉพาะ cPanel ที่ต้องการ (พิมพ์หมายเลข `1 3 5` หรือ `1,3,5`) |
+
+พิมพ์ `q` / `quit` / `exit` เพื่อออกได้ตลอด
+
+---
+
+## 📊 Output ตัวอย่าง
+
+```
+✔️  ALREADY: [1/250] user01/example.com | user=ufavision
+🔄 OVERWRITE: [2/250] user01/shop.com | oldacct → ufavision
+✅ PASS: [3/250] user02/blog.com | https://blog.com
+⏭  SKIP: [4/250] user02/test.com
+```
+
+### Summary Banner
+
+```
+╔══════════════════════════════════════════════╗
+║  SUMMARY                                      ║
+╠══════════════════════════════════════════════╣
+║  Total WordPress    : 250                    ║
+║  Pass               : 245  (overwrite 200)   ║
+║  Already            : 3                      ║
+║  Fail               : 1                      ║
+║  No Plugin          : 1                      ║
+╚══════════════════════════════════════════════╝
 ```
 
 ---
 
-## ⚙️ Requirements
+## 📱 Telegram Notification
 
-| รายการ | รายละเอียด |
-|--------|-----------|
-| OS | Linux (CentOS / Ubuntu / AlmaLinux) |
-| Server | cPanel / WHM |
-| [WP-CLI](https://wp-cli.org) | ต้องติดตั้งก่อนใช้งาน |
-| Rank Math Plugin | ต้องติดตั้งและ active ในแต่ละเว็บ |
-| Rank Math License Key | สำหรับ Pro Plan (Free ไม่ต้องใช้) |
+ส่งสรุปผลเข้า Telegram ทุกครั้งที่จบงาน
 
----
-
-### 2. ตั้งค่า License Key (เฉพาะ Pro Plan)
-
-แก้ไขบรรทัดนี้ใน script:
-
-```bash
-RM_LICENSE_KEY="your-license-key-here"
 ```
-
-> ถ้าใช้ **Rank Math Free** ให้เว้นว่างไว้ได้เลย
-
-### 3. รัน Script
-
-```bash
-./connect-account.sh
+✅ Rank Math Bulk Connect
+🖥 Server : ns5041423
+🎛 Mode   : Mode 2: เลือกบาง cPanel
+👥 cPanel Accounts: 3 accounts (เลือกจาก 47)
+├ Total       : 250
+├ ✅ Pass     : 245  (overwrite 200)
+├ ✔️ Already  : 3
+├ ❌ Fail     : 1
+└ ⏭ NoPlugin : 1
+⏱ ใช้เวลา : 5 นาที 32 วินาที
 ```
 
 ---
 
-## 🔧 ค่า Config ที่ปรับได้
+## ⚙️ ปรับแต่ง
+
+แก้ค่าที่หัวไฟล์:
 
 ```bash
-MAX_JOBS=5       # จำนวน parallel jobs (แนะนำ 5)
-WP_TIMEOUT=30    # timeout ต่อเว็บ (วินาที)
-MAX_RETRY=3      # retry สูงสุดต่อเว็บ
-RETRY_DELAY=5    # รอ (วินาที) ก่อน retry
-RM_LICENSE_KEY="" # Rank Math Pro License Key
+TELEGRAM_ENABLED=true
+TELEGRAM_BOT_TOKEN="..."
+TELEGRAM_CHAT_ID="..."
+MAX_JOBS=10            # parallel jobs
+WP_TIMEOUT=25          # timeout WP-CLI ต่อ command
+DEACT_TIMEOUT=8        # timeout deactivate API
+MAX_RETRY=3            # max retry input ที่ Mode 2
 ```
 
 ---
 
-## 📊 สถานะผลลัพธ์
+## 📄 Config File
 
-| Status | ความหมาย |
-|--------|---------|
-| ✅ `PASS` | Connect สำเร็จ บันทึกลง DB แล้ว |
-| ✔️ `ALREADY` | เชื่อมต่ออยู่แล้ว ไม่ต้องทำซ้ำ |
-| ❌ `FAIL` | API error หรือ timeout |
-| 🔑 `NOKEY` | ไม่มี License Key ต้องตั้งค่าก่อน |
-| ⏭ `NOPLUGIN` | Rank Math ไม่ได้ติดตั้งหรือไม่ active |
+ตำแหน่ง default: `/root/.rankmath-connect.conf`
+
+```bash
+RM_USERNAME="username_ใหม่"
+RM_EMAIL="email@gmail.com"
+RM_API_KEY="xxxxxxxxxxxxxxx"
+RM_PLAN="free"
+RM_OLD_USERNAME="username_เก่า"     # สำหรับ deactivate
+RM_OLD_API_KEY="xxxxxxxxxxxxxxx"   # API key เก่า
+```
+
+> เรียกใช้ custom config: `bash connect-account.sh /path/to/conf` หรือ `RANKMATH_CONF=/path bash connect-account.sh`
 
 ---
 
 ## 📁 Log Files
 
-หลังรันสำเร็จ จะสร้าง log ไว้ที่:
+`/var/log/` — overwrite ทุกครั้งที่รัน
 
-```
-/var/log/rankmath-connect.log         ← log รวมทุก event
-/var/log/rankmath-connect-pass.log    ← เว็บที่ connect สำเร็จ
-/var/log/rankmath-connect-already.log ← เว็บที่เชื่อมต่ออยู่แล้ว
-/var/log/rankmath-connect-fail.log    ← เว็บที่ connect ล้มเหลว
-/var/log/rankmath-connect-nokey.log   ← เว็บที่ไม่มี License Key
-/var/log/rankmath-connect-noplugin.log← เว็บที่ไม่มี Rank Math
-```
-
-ดู log แบบ realtime:
-```bash
-tail -f /var/log/rankmath-connect.log
-```
+| File | เนื้อหา |
+|---|---|
+| `rankmath-connect.log` | log หลัก + summary |
+| `rankmath-connect-pass.log` | เว็บที่ inject สำเร็จ |
+| `rankmath-connect-already.log` | เว็บที่ใช้ account ใหม่อยู่แล้ว |
+| `rankmath-connect-overwrite.log` | เว็บที่เปลี่ยน account |
+| `rankmath-connect-fail.log` | เว็บที่ verify ไม่ผ่าน |
+| `rankmath-connect-noplugin.log` | เว็บที่ไม่มี Rank Math plugin |
 
 ---
 
-## 🖥️ ตัวอย่าง Output
+## ❌ Script จะ **ไม่** ทำสิ่งเหล่านี้
 
-```
-======================================
- BULK RANK MATH CONNECT ACCOUNT
- เริ่มเวลา   : 2025-03-05 10:00:00
- Jobs        : 5 | Retry: 3x | RetryDelay: 5s
-======================================
-พบ WordPress : 42 เว็บ
-======================================
-✔️  ALREADY: [1/42] example.com | email=admin@example.com | plan=pro
-✅ PASS:    [2/42] mysite.co.th | email=me@mysite.co.th | plan=free | attempt=1/3
-⏭  SKIP:   [3/42] newsite.com  | Rank Math ไม่ได้ติดตั้ง
-❌ FAIL:    [4/42] broken.com   | attempt=3/3 | error=http:500
-======================================
- สรุปผลรวม
- รวมทั้งหมด              : 42 เว็บ
- ✅ Pass (connected ใหม่) : 35 เว็บ
- ✔️  Already connected    : 4 เว็บ
- ❌ Fail                  : 1 เว็บ
- 🔑 No License Key        : 0 เว็บ
- ⏭  No Plugin             : 2 เว็บ
- เวลาที่ใช้               : 1 นาที 23 วินาที
-======================================
-```
+- ไม่ติดตั้ง Rank Math plugin (ถ้ายังไม่มี → skip)
+- ไม่ activate plugin (ถ้า inactive → skip)
+- ไม่แตะ Rank Math settings อื่น (Sitemap, SEO, Schema, ฯลฯ)
+- ไม่สร้าง Rank Math account (ต้องสมัครบน rankmath.com ก่อน)
 
 ---
 
-## 🔍 วิธีค้นหา WordPress บนเซิร์ฟเวอร์
+## 🔗 Related Repos
 
-Script ค้นหาจาก 2 แหล่ง:
-
-1. **WHM** — อ่านจาก `/etc/trueuserdomains` แล้ว scan หา `wp-config.php`
-2. **Directory Scan** — ค้นใน `/home`, `/home2`, `/home3`, `/home4`, `/home5`, `/usr/home`
-
----
-
-## ⚠️ หมายเหตุสำคัญ
-
-- ต้องรันด้วยสิทธิ์ **root** หรือ user ที่มีสิทธิ์อ่าน `/home/*`
-- Script ใช้ **WP-CLI** ในการ eval PHP โดยตรง ไม่ได้ login ผ่าน Browser
-- Rank Math Free Plan ไม่ต้องการ License Key — script จะรายงาน `NOKEY` แต่ไม่ถือเป็น error
-- Log จะถูก **ล้างทุกครั้ง** ที่รัน script ใหม่ เก็บเฉพาะ run ล่าสุด
+- [Litespeed-Object-Cache](https://github.com/AnonymousVS/Litespeed-Object-Cache) — Setup Object Cache → Redis
+- [Litespeed-Purge-All](https://github.com/AnonymousVS/Litespeed-Purge-All) — Purge LiteSpeed cache
+- [WP-Toolkit-CleanUP](https://github.com/AnonymousVS/WP-Toolkit-CleanUP) — ลบ default plugins/themes
 
 ---
 
-## 📂 ไฟล์ในProject
+## 📝 License
 
-```
-rankmath/
-├── connect-account.sh   ← script หลัก
-└── README.md            ← เอกสารนี้
-```
-
----
-
-## 🔗 Related
-
-- [Rank Math Official](https://rankmath.com)
-- [WP-CLI Installation](https://wp-cli.org/#installing)
-- [Rank Math License Dashboard](https://rankmath.com/dashboard/)
+MIT
