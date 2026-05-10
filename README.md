@@ -42,8 +42,11 @@ Script อ่าน config (Rank Math credentials) → สแกน WordPress �
 
 ## 🚀 วิธีใช้งาน
 
-📄 **คำสั่งรัน→ 
+📄 **คำสั่งรัน →**
+
+```bash
 https://docs.google.com/document/d/1lnoznw6WxO-1hFEM6yyGTi688ksqN2UA3P2kwHej6gw/edit?usp=sharing
+```
 ---
 
 ## 🎛 Mode การทำงาน
@@ -157,15 +160,6 @@ RM_OLD_API_KEY="xxxxxxxxxxxxxxx"   # API key เก่า
 - ไม่สร้าง Rank Math account (ต้องสมัครบน rankmath.com ก่อน)
 
 ---
-
-## 🔗 Related Repos
-
-- [Litespeed-Object-Cache](https://github.com/AnonymousVS/Litespeed-Object-Cache) — Setup Object Cache → Redis
-- [Litespeed-Purge-All](https://github.com/AnonymousVS/Litespeed-Purge-All) — Purge LiteSpeed cache
-- [WP-Toolkit-CleanUP](https://github.com/AnonymousVS/WP-Toolkit-CleanUP) — ลบ default plugins/themes
-
----
-
 ## 📝 License
 
 MIT
