@@ -42,10 +42,8 @@ Script อ่าน config (Rank Math credentials) → สแกน WordPress �
 
 ## 🚀 วิธีใช้งาน
 
-📄 **คำสั่งรัน + ขั้นตอนทั้งหมด → [Google Doc](https://docs.google.com/document/d/1lnoznw6WxO-1hFEM6yyGTi688ksqN2UA3P2kwHej6gw/edit?usp=sharing)**
-
-> ⚠️ ต้องมี GitHub Personal Access Token ก่อนรัน (อ่าน config repo ที่เป็น private)
-
+📄 **คำสั่งรัน→ 
+https://docs.google.com/document/d/1lnoznw6WxO-1hFEM6yyGTi688ksqN2UA3P2kwHej6gw/edit?usp=sharing
 ---
 
 ## 🎛 Mode การทำงาน
